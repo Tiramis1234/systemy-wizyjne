@@ -5,3 +5,8 @@ services:
   backend:
     devices:
       - /dev/video0:/dev/video0
+    # The device keeps its host group ("video", gid 39 on Fedora); the non-root
+    # backend user must be in that group to open the camera.
+    # Check yours with: getent group video
+    group_add:
+      - "${VIDEO_GID:-39}"
