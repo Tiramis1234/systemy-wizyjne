@@ -53,3 +53,31 @@ Starter data from the course package was moved to data/samples/
 - Dockerfiles for backend and frontend, docker-compose.yml, camera override.
 - Verified: "docker compose up --build" starts both services and
   GET /api/health through the frontend proxy returns {"status": "ok"}.
+
+3.1 Loading JPG/PNG images and image info  [minimum]
+----------------------------------------------------
+- An image can be loaded by a path on the server (with suggestions from
+  data/samples/) or uploaded from the browser.
+- Shown: the image, resolution (width x height), number of channels and data
+  type (e.g. 640 x 420 px, 3 channels, uint8 for obraz_testowy.png).
+- Methods and parameters:
+  * Files are read with cv2.imdecode(..., IMREAD_UNCHANGED). UNCHANGED keeps
+    the original number of channels (grayscale = 1, RGBA = 4) and bit depth
+    (uint8/uint16), so the info panel shows what really is in the file instead
+    of a forced 3-channel 8-bit conversion.
+  * Bytes are read first and decoded second instead of using cv2.imread,
+    because imread returns None for every problem; this way a missing file
+    and a corrupted file produce two different, precise messages.
+  * Accepted extensions: .png, .jpg, .jpeg (required formats; .jpeg is the
+    same format as .jpg).
+- Colors: images stay in OpenCV's BGR order internally. The preview is sent
+  to the browser as PNG made by cv2.imencode, which expects BGR and writes a
+  standard RGB file - so there is no manual channel swap that could be
+  forgotten or done twice. A test checks that the red square of
+  obraz_testowy.png is still red (R > 150, B < 100) after loading.
+- Errors (HTTP status + message shown in the interface):
+  * wrong path            -> 404 "File does not exist: <path>"
+  * unsupported extension -> 404 "Unsupported file type ..."
+  * corrupted/empty file  -> 400 "The file is not a valid image or is corrupted."
+- Tests: 9 unit tests of loading/decoding/encoding on synthetic images and the
+  sample image, 3 tests of image info, 7 API tests (TestClient).
