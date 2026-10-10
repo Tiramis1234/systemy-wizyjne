@@ -233,3 +233,97 @@ Lighting test procedure (camera /dev/video0, 640x480):
   Store input as A -> switch the lamp -> wait 2 s -> Capture -> Store as B.
 - Results: [TO FILL after the test: mean, std, dark %, bright % for A and B,
   B - A, observations, screenshot]
+
+==============================================================================
+4. REQUIRED MINIMUM VS. EXTRAS
+==============================================================================
+
+Required minimum (P01 brief):
+- web interface; interface / sources / processing in separate layers
+- loading JPG and PNG; image, resolution, channels, data type shown
+- camera preview and frame capture; opening checked, device released
+- video play / pause, frame selection, replay after the end
+- input and result shown; reset; saving PNG/JPG; source change without restart
+- messages for: wrong path, corrupted image, missing camera, failed save;
+  the interface stays responsive
+- comparison of two lighting settings with the camera (procedure in 3.6)
+- report (this file) and source ZIP
+
+Extras (beyond the brief):
+- grayscale operation (gives the result panel a visible effect)
+- lighting comparison panel with brightness statistics and histograms
+- image upload from the browser in addition to server paths
+- result download in the browser in addition to saving on the server
+- Docker Compose with optional camera passthrough, non-root backend
+- automated tests: 87 (pytest), lint with ruff
+
+==============================================================================
+5. TEST CONDITIONS AND RESULTS
+==============================================================================
+
+Environment: Fedora Linux, Python 3.13.15, OpenCV 5.0.0, FastAPI 0.143,
+Vue 3.5, Vite 8, built-in laptop camera /dev/video0 (640x480).
+
+Automated tests (uv run pytest): 87 passed.
+- core: synthetic images (np.zeros / np.full + known values) with known
+  expected results, plus the course sample image (red square stays red).
+- sources: synthetic MJPEG video generated during the test; the sample video
+  checked against its description; camera with a fake VideoCapture, and a
+  missing camera with a real non-existent index.
+- api: every endpoint through FastAPI TestClient, including all error paths.
+
+Manual checks:
+- obraz_testowy.png: correct colors, 640 x 420 px, 3 channels, uint8.
+- wrong path, corrupted file (text renamed to .png): messages shown,
+  interface keeps working.
+- ruch_testowy.avi: play / pause / slider / replay at 15 fps; frame request
+  about 4 ms.
+- camera: preview with natural colors, capture, stop; camera index 5 ->
+  "Camera 5 not found or busy ...".
+- save to a missing directory -> "Directory does not exist: ...".
+- switching camera -> video: the camera is released ("No camera is open").
+- Docker without camera: "Camera 0 not found ..." and files work; Docker with
+  compose.camera.yaml: camera opens.
+
+==============================================================================
+6. PROBLEMS
+==============================================================================
+
+- Docker created the missing output/ bind-mount directory as root, so saving
+  results later failed with "Permission denied". Fixed by keeping output/ in
+  the repository and running the backend container as the host user.
+- As a non-root user the container could not open the camera; fixed by
+  adding the host "video" group (group_add) in compose.camera.yaml.
+- cv2.imread / cv2.imwrite do not say why they failed (None / False), so
+  reading and writing bytes is done with Python file I/O and OpenCV only
+  decodes / encodes; this gives precise error messages.
+- Patching cv2.VideoCapture globally in camera tests would also replace it for
+  video sources; the camera module imports VideoCapture by name so tests
+  replace only the camera's capture.
+
+==============================================================================
+7. LIMITATIONS
+==============================================================================
+
+- Single user: the application keeps one input, one result and one active
+  source in memory; two browser tabs share the same state.
+- Video and camera frames are sent as PNG one request at a time; fine for
+  640x480 at 15 fps locally, too slow for high resolutions or remote use.
+- Brightness statistics support 8-bit images only.
+- When the source is changed in one tab, the preview of the closed source
+  stops with a message instead of silently switching.
+- Saving configuration to JSON is not implemented yet: P01 has almost no
+  parameters (camera index, operation). It starts in P02 together with the
+  first processing methods.
+- Only /dev/video0 is passed to Docker; other cameras need an edit of
+  compose.camera.yaml.
+
+==============================================================================
+8. NEXT STEPS
+==============================================================================
+
+- P02: first processing methods with tunable parameters in core/, saving and
+  loading parameters as JSON.
+- Choose the inspection subject for the project charter.
+- Processing video frames live (needed later, e.g. for the counting line
+  suggested in data/samples/opis_danych.txt).
