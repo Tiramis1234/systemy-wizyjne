@@ -98,3 +98,15 @@ export function captureCameraFrame() {
 export function closeCamera() {
   return postJson('/api/camera/close', {})
 }
+
+export function storeComparisonSlot(slot) {
+  return postJson(`/api/compare/${slot}`, {})
+}
+
+export async function getComparison() {
+  return (await request('/api/compare')).json()
+}
+
+export function comparisonImageUrl(slot, version) {
+  return `/api/compare/${slot}/image?v=${version}`
+}

@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import * as api from './api.js'
 import CameraControls from './components/CameraControls.vue'
+import ComparePanel from './components/ComparePanel.vue'
 import ImageSourceControls from './components/ImageSourceControls.vue'
 import ImageViewer from './components/ImageViewer.vue'
 import MessageBar from './components/MessageBar.vue'
@@ -143,6 +144,8 @@ onMounted(() => run(async () => (samples.value = await api.listSamples())))
         :info="resultInfo"
       />
     </div>
+
+    <ComparePanel :disabled="!inputInfo" @error="showError" @info="showInfo" />
   </main>
 </template>
 

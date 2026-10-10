@@ -35,3 +35,7 @@ class SourceReadError(VisionError):
 
 class FrameOutOfRangeError(VisionError):
     """The requested video frame index does not exist."""
+
+
+class UnsupportedImageError(VisionError):
+    """The image type is valid but not supported by the chosen method."""

@@ -3,6 +3,7 @@
 from pydantic import BaseModel
 
 from app import settings
+from app.core.image_stats import BrightnessStats
 from app.core.operations import Operation
 
 
@@ -36,3 +37,9 @@ class CameraRequest(BaseModel):
 class CameraInfo(BaseModel):
     width: int
     height: int
+
+
+class Comparison(BaseModel):
+    A: BrightnessStats | None
+    B: BrightnessStats | None
+    mean_difference: float | None  # B.mean - A.mean; positive = B is brighter

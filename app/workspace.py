@@ -1,4 +1,4 @@
-"""In-memory state of the application: the input image and the result image.
+"""In-memory state of the application: input, result and comparison snapshots.
 
 The application has a single user, so one Workspace per running app is enough.
 It holds no web logic, only the images the user is working on.
@@ -13,6 +13,8 @@ class Workspace:
     def __init__(self) -> None:
         self.input: np.ndarray | None = None
         self.result: np.ndarray | None = None
+        # Named copies of earlier inputs, e.g. "A" and "B" for the lighting test.
+        self.snapshots: dict[str, np.ndarray] = {}
 
     def set_input(self, image: np.ndarray) -> None:
         # Copies, so later changes to the caller's array cannot affect the workspace.
@@ -35,3 +37,14 @@ class Workspace:
 
     def reset(self) -> None:
         self.result = self.require_input().copy()
+
+    def store_snapshot(self, name: str) -> np.ndarray:
+        """Keep a copy of the current input under a name and return it."""
+        snapshot = self.require_input().copy()
+        self.snapshots[name] = snapshot
+        return snapshot
+
+    def require_snapshot(self, name: str) -> np.ndarray:
+        if name not in self.snapshots:
+            raise LookupError(f"Nothing stored as {name} yet.")
+        return self.snapshots[name]
