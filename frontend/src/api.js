@@ -49,3 +49,15 @@ export async function uploadImage(file) {
 export function inputImageUrl(version) {
   return `/api/workspace/input?v=${version}`
 }
+
+export function resultImageUrl(version) {
+  return `/api/workspace/result?v=${version}`
+}
+
+export function applyOperation(operation) {
+  return postJson('/api/workspace/apply', { operation })
+}
+
+export function resetResult() {
+  return postJson('/api/workspace/reset', {})
+}

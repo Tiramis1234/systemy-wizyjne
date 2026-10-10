@@ -1,4 +1,4 @@
-"""Serving the current input image and listing sample files."""
+"""Input and result images: serving, applying an operation, reset; sample files."""
 
 from typing import Annotated
 
@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Response
 
 from app import settings
 from app.api.dependencies import get_workspace
+from app.api.schemas import ApplyRequest
 from app.core.image_info import ImageInfo, describe_image
 from app.core.image_io import encode_image
 from app.workspace import Workspace
@@ -31,6 +32,28 @@ def get_input(workspace: WorkspaceDep) -> Response:
 @router.get("/workspace/input/info")
 def get_input_info(workspace: WorkspaceDep) -> ImageInfo:
     return describe_image(workspace.require_input())
+
+
+@router.get("/workspace/result")
+def get_result(workspace: WorkspaceDep) -> Response:
+    return png_response(encode_image(workspace.require_result(), PREVIEW_FORMAT))
+
+
+@router.get("/workspace/result/info")
+def get_result_info(workspace: WorkspaceDep) -> ImageInfo:
+    return describe_image(workspace.require_result())
+
+
+@router.post("/workspace/apply")
+def apply_operation(request: ApplyRequest, workspace: WorkspaceDep) -> ImageInfo:
+    workspace.apply(request.operation)
+    return describe_image(workspace.require_result())
+
+
+@router.post("/workspace/reset")
+def reset_result(workspace: WorkspaceDep) -> ImageInfo:
+    workspace.reset()
+    return describe_image(workspace.require_result())
 
 
 @router.get("/samples")
