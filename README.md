@@ -2,6 +2,30 @@
 
 Machine Vision Systems course project (2026/27): a FastAPI + OpenCV application with a Vue frontend for experimenting with image processing methods and performing a complete product inspection.
 
+## Running
+
+Requirements: [uv](https://docs.astral.sh/uv/), Node.js 22+ (or only Docker).
+
+```bash
+# Backend (http://localhost:8000, API docs at /docs)
+uv sync
+uv run fastapi dev app/main.py
+
+# Frontend (http://localhost:5173), in a second terminal
+cd frontend && npm install && npm run dev
+```
+
+With Docker (frontend at http://localhost:4173):
+
+```bash
+docker compose up --build                                          # without camera
+docker compose -f docker-compose.yml -f compose.camera.yaml up --build  # with /dev/video0
+```
+
+Tests and lint: `uv run pytest`, `uv run ruff check .`
+
+Stage ZIP: `scripts/make_zip.sh 01` creates `Lenarczyk_Marek_Inf_Projekt01.zip` from the last commit.
+
 ## Schedule
 
 Group 1: 11:00–11:45, group 2: 11:55–12:40.

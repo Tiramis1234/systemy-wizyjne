@@ -222,3 +222,6 @@ __marimo__/
 # Saved processing results (the empty directory is kept so Docker does not create it as root)
 output/*
 !output/.gitkeep
+
+# Stage ZIPs
+Lenarczyk_Marek_Inf_Projekt*.zip
