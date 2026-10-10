@@ -23,3 +23,15 @@ class ImageEncodeError(VisionError):
 
 class ImageSaveError(VisionError):
     """The result could not be written (bad directory, permissions, format)."""
+
+
+class SourceUnavailableError(VisionError):
+    """A video file or camera cannot be opened (missing, not a video, no device)."""
+
+
+class SourceReadError(VisionError):
+    """An opened source failed to deliver a frame (e.g. camera disconnected)."""
+
+
+class FrameOutOfRangeError(VisionError):
+    """The requested video frame index does not exist."""

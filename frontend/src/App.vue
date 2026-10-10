@@ -5,8 +5,14 @@ import ImageSourceControls from './components/ImageSourceControls.vue'
 import ImageViewer from './components/ImageViewer.vue'
 import MessageBar from './components/MessageBar.vue'
 import ResultControls from './components/ResultControls.vue'
+import VideoControls from './components/VideoControls.vue'
 
 const samples = ref([])
+const sourceTab = ref('image') // 'image' | 'video'
+const sourceTabs = [
+  { value: 'image', label: 'Image file' },
+  { value: 'video', label: 'Video file' },
+]
 const message = ref(null)
 
 const inputInfo = ref(null)
@@ -82,7 +88,30 @@ onMounted(() => run(async () => (samples.value = await api.listSamples())))
     <MessageBar :message="message" @dismiss="message = null" />
 
     <section class="panel">
-      <ImageSourceControls :samples="samples" @load-path="loadPath" @upload="upload" />
+      <nav class="tabs">
+        <button
+          v-for="tab in sourceTabs"
+          :key="tab.value"
+          type="button"
+          :class="{ active: sourceTab === tab.value }"
+          @click="sourceTab = tab.value"
+        >
+          {{ tab.label }}
+        </button>
+      </nav>
+      <ImageSourceControls
+        v-show="sourceTab === 'image'"
+        :samples="samples"
+        @load-path="loadPath"
+        @upload="upload"
+      />
+      <VideoControls
+        v-show="sourceTab === 'video'"
+        :samples="samples"
+        @error="showError"
+        @info="showInfo"
+        @captured="onInputLoaded"
+      />
     </section>
 
     <section class="panel">
@@ -119,6 +148,22 @@ h1 {
   border-radius: 6px;
   padding: 12px;
   margin-bottom: 12px;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.tabs button {
+  border: 1px solid #8c959f;
+  background: white;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.tabs button.active {
+  background: #1f2328;
+  color: white;
 }
 .viewers {
   display: flex;

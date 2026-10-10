@@ -8,19 +8,26 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.core.errors import (
+    FrameOutOfRangeError,
     ImageDecodeError,
     ImageEncodeError,
     ImageLoadError,
     ImageSaveError,
+    SourceReadError,
+    SourceUnavailableError,
     VisionError,
 )
 
-# 404: the thing the user pointed to is not there; 400: it is there but invalid.
+# 404: the thing the user pointed to is not there; 400: it is there but invalid;
+# 503: an opened source (e.g. camera) stopped delivering frames.
 STATUS_CODES: dict[type[Exception], int] = {
     ImageLoadError: 404,
+    SourceUnavailableError: 404,
     ImageDecodeError: 400,
     ImageEncodeError: 400,
     ImageSaveError: 400,
+    FrameOutOfRangeError: 400,
+    SourceReadError: 503,
 }
 
 

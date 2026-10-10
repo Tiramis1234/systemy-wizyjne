@@ -15,3 +15,14 @@ class ApplyRequest(BaseModel):
 
 class SavedResponse(BaseModel):
     path: str
+
+
+class FrameRequest(BaseModel):
+    index: int
+
+
+class VideoInfo(BaseModel):
+    frame_count: int
+    fps: float
+    width: int
+    height: int

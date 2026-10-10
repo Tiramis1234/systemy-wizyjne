@@ -69,3 +69,16 @@ export function saveResult(path) {
 export function resultDownloadUrl(format) {
   return `/api/workspace/result/download?format=${format}`
 }
+
+export function openVideo(path) {
+  return postJson('/api/video/open', { path })
+}
+
+// Returns the frame as a Blob (fetched, not set as <img src>, so errors have a message).
+export async function fetchVideoFrame(index) {
+  return (await request(`/api/video/frame?index=${index}`)).blob()
+}
+
+export function captureVideoFrame(index) {
+  return postJson('/api/video/capture', { index })
+}

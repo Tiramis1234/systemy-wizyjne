@@ -1,20 +1,17 @@
 """Input and result images: serving, applying an operation, reset; sample files."""
 
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Literal
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Response
 
 from app import settings
-from app.api.dependencies import get_workspace
+from app.api.dependencies import WorkspaceDep
 from app.api.schemas import ApplyRequest, PathRequest, SavedResponse
 from app.core.image_info import ImageInfo, describe_image
 from app.core.image_io import encode_image, save_image
-from app.workspace import Workspace
 
 router = APIRouter(prefix="/api", tags=["workspace"])
-
-WorkspaceDep = Annotated[Workspace, Depends(get_workspace)]
 
 # PNG is lossless, so the preview shows exactly the pixels being processed.
 PREVIEW_FORMAT = ".png"
