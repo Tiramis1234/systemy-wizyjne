@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import * as api from './api.js'
+import CameraControls from './components/CameraControls.vue'
 import ImageSourceControls from './components/ImageSourceControls.vue'
 import ImageViewer from './components/ImageViewer.vue'
 import MessageBar from './components/MessageBar.vue'
@@ -8,10 +9,11 @@ import ResultControls from './components/ResultControls.vue'
 import VideoControls from './components/VideoControls.vue'
 
 const samples = ref([])
-const sourceTab = ref('image') // 'image' | 'video'
+const sourceTab = ref('image') // 'image' | 'video' | 'camera'
 const sourceTabs = [
   { value: 'image', label: 'Image file' },
   { value: 'video', label: 'Video file' },
+  { value: 'camera', label: 'Camera' },
 ]
 const message = ref(null)
 
@@ -108,6 +110,12 @@ onMounted(() => run(async () => (samples.value = await api.listSamples())))
       <VideoControls
         v-show="sourceTab === 'video'"
         :samples="samples"
+        @error="showError"
+        @info="showInfo"
+        @captured="onInputLoaded"
+      />
+      <CameraControls
+        v-show="sourceTab === 'camera'"
         @error="showError"
         @info="showInfo"
         @captured="onInputLoaded"

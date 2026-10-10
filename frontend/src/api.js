@@ -82,3 +82,19 @@ export async function fetchVideoFrame(index) {
 export function captureVideoFrame(index) {
   return postJson('/api/video/capture', { index })
 }
+
+export function openCamera(index) {
+  return postJson('/api/camera/open', { index })
+}
+
+export async function fetchCameraFrame() {
+  return (await request('/api/camera/frame')).blob()
+}
+
+export function captureCameraFrame() {
+  return postJson('/api/camera/capture', {})
+}
+
+export function closeCamera() {
+  return postJson('/api/camera/close', {})
+}

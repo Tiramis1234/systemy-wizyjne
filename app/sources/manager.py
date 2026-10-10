@@ -28,5 +28,7 @@ class SourceManager:
     def require[S: Source](self, kind: type[S]) -> S:
         """Return the active source if it is of the given kind, e.g. VideoSource."""
         if not isinstance(self.active, kind):
-            raise LookupError(f"No {kind.__name__} is open.")
+            # "CameraSource" -> "camera", "VideoSource" -> "video"
+            name = kind.__name__.removesuffix("Source").lower()
+            raise LookupError(f"No {name} is open (it was closed or another source was chosen).")
         return self.active

@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel
 
+from app import settings
 from app.core.operations import Operation
 
 
@@ -24,5 +25,14 @@ class FrameRequest(BaseModel):
 class VideoInfo(BaseModel):
     frame_count: int
     fps: float
+    width: int
+    height: int
+
+
+class CameraRequest(BaseModel):
+    index: int = settings.CAMERA_INDEX
+
+
+class CameraInfo(BaseModel):
     width: int
     height: int

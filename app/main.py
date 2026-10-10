@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app import settings
-from app.api import routes_image, routes_video, routes_workspace
+from app.api import routes_camera, routes_image, routes_video, routes_workspace
 from app.api.errors import register_error_handlers
 from app.sources.manager import SourceManager
 from app.workspace import Workspace
@@ -26,6 +26,7 @@ def create_app() -> FastAPI:
     settings.OUTPUT_DIR.mkdir(exist_ok=True)
 
     register_error_handlers(app)
+    app.include_router(routes_camera.router)
     app.include_router(routes_image.router)
     app.include_router(routes_video.router)
     app.include_router(routes_workspace.router)
