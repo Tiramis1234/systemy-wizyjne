@@ -197,3 +197,39 @@ Starter data from the course package was moved to data/samples/
 - Tests: missing camera with a real index 99 (no machine has 100 cameras);
   reading, frame size, failed read and release with a fake VideoCapture
   (monkeypatch), so tests do not need hardware. 5 source tests, 5 API tests.
+
+3.6 Lighting comparison  [minimum: the test itself; panel = extra]
+------------------------------------------------------------------
+- Panel "Lighting comparison": "Store input as A" / "Store input as B" keep a
+  copy of the current input (from any source: camera capture, video frame or
+  file). For each one the backend computes statistics on the luminance
+  (grayscale) image, and the panel shows the image, a histogram, the values
+  and the difference of mean brightness B - A.
+- Statistics (app/core/image_stats.py) and why:
+  * mean            - overall brightness: the main effect of a lighting change
+  * std             - global contrast (spread of gray levels)
+  * min / max       - used range of gray levels
+  * dark fraction   - share of pixels <= 5   (underexposed, detail lost)
+  * bright fraction - share of pixels >= 250 (overexposed, detail lost)
+    The limits 5 / 250 (about 2% of the 0-255 range) count near-black and
+    near-white pixels as clipped while tolerating sensor noise around 0/255.
+  * histogram: 32 bins of 8 gray levels - enough to see the shape (dark,
+    bright, clipped) while readable as a small chart.
+- Only 8-bit images are supported (camera frames always are); a 16-bit input
+  gets a clear message.
+- Tests: 5 unit tests with known results (uniform image, half black / half
+  white -> mean 127.5, std 127.5, 50% dark, 50% bright; histogram counts),
+  5 API tests.
+
+Lighting test procedure (camera /dev/video0, 640x480):
+- Kept constant: camera position and angle (camera not moved between shots),
+  the scene and the objects in it, distance, resolution, camera settings
+  (automatic exposure left as it is - its reaction is part of what is
+  observed), the time after starting the camera (frames captured after at
+  least 2 s, so automatic exposure has settled).
+- Changed: only the lighting - A: room lamp off (daylight only), B: room lamp
+  on (daylight + lamp).
+- Steps: Camera tab -> Start -> wait 2 s -> Capture frame as input ->
+  Store input as A -> switch the lamp -> wait 2 s -> Capture -> Store as B.
+- Results: [TO FILL after the test: mean, std, dark %, bright % for A and B,
+  B - A, observations, screenshot]
