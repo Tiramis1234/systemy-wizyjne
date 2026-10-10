@@ -1,0 +1,55 @@
+MACHINE VISION SYSTEMS - PROJECT STAGE P01
+Author: Marek Lenarczyk
+Stage: P01 - base application: image sources, preview, saving, error handling
+Branch: feature/p01-image-sources
+
+==============================================================================
+1. STAGE GOAL
+==============================================================================
+
+Build the base application that all later stages extend. The interface, the
+handling of image sources and the image processing are kept in separate
+layers. The application loads JPG/PNG images, plays video files, shows a live
+camera preview, displays the input and the result side by side, saves the
+result and reports errors without freezing the interface.
+
+==============================================================================
+2. ARCHITECTURE AND TECHNOLOGY
+==============================================================================
+
+- Backend: Python 3.13 + FastAPI + OpenCV (opencv-python-headless 5.0).
+  Python 3.13 is pinned instead of the system 3.14 because OpenCV and NumPy
+  wheels for 3.13 are well established.
+- Frontend: Vue 3 + Vite. It only calls the HTTP API; no image processing.
+- Run: locally (uv run fastapi dev app/main.py, npm run dev) or with
+  Docker Compose (backend + frontend services).
+- The camera is passed to Docker only through an optional override file
+  (compose.camera.yaml), so the default "docker compose up" also works on a
+  machine without a camera.
+
+Layers (required separation of interface, sources and processing):
+
+  app/core/     processing: pure functions working on numpy arrays,
+                no web or source code
+  app/sources/  image sources: image file, video file, camera
+                (opening, checking, releasing)
+  app/api/      HTTP layer: thin FastAPI routers, no processing logic
+  frontend/     user interface
+
+Starter data from the course package was moved to data/samples/
+(obraz_testowy.png 640x420 RGB, ruch_testowy.avi 640x360 MJPEG, 15 fps,
+195 frames).
+
+==============================================================================
+3. IMPLEMENTED FEATURES
+==============================================================================
+
+3.0 Project scaffold
+--------------------
+- uv project with FastAPI and OpenCV, pytest and ruff configured.
+- Health endpoint GET /api/health (tested with TestClient).
+- Vue + Vite frontend; the dev server proxies /api to the backend, so the
+  frontend never needs to know the backend address.
+- Dockerfiles for backend and frontend, docker-compose.yml, camera override.
+- Verified: "docker compose up --build" starts both services and
+  GET /api/health through the frontend proxy returns {"status": "ok"}.
