@@ -100,3 +100,27 @@ Starter data from the course package was moved to data/samples/
   operation -> 422 (validated by the Operation enum).
 - Tests: 9 operation tests (incl. "input is never modified" for every
   operation), 4 workspace tests, 5 API tests.
+
+3.3 Saving the result as PNG/JPG  [minimum; browser download = extra]
+---------------------------------------------------------------------
+- "Save on server": the result is written to a path given by the user
+  (default output/result.png). The format follows the extension:
+  .png (lossless) or .jpg/.jpeg.
+- "Download PNG / JPG": the result is sent to the browser as a file.
+- Parameters:
+  * JPEG quality = 95 (cv2.IMWRITE_JPEG_QUALITY). This is OpenCV's own
+    default: artifacts are not visible on inspection images while the file is
+    much smaller than PNG. PNG uses OpenCV defaults (lossless).
+- The image is encoded with cv2.imencode and written with Python file I/O
+  instead of cv2.imwrite, because imwrite only returns False on failure,
+  while an OSError says why (missing permissions, target is a directory).
+- Errors (400 + message):
+  * directory does not exist -> "Directory does not exist: <dir>"
+  * unsupported extension    -> "Unsupported file type ..."
+  * permissions / target is a directory -> "Could not save <path>: <reason>"
+- Docker: the backend container runs as the host user (user: 1000:1000 by
+  default), and output/ exists in the repository. Problem found during
+  testing: Docker created a missing bind-mount directory as root, so saving
+  later failed with "Permission denied" - both changes fix that.
+- Tests: 5 unit tests of saving (PNG round trip, JPG, missing directory,
+  bad extension, directory as target), 3 API tests.
