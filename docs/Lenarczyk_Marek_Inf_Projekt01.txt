@@ -124,3 +124,40 @@ Starter data from the course package was moved to data/samples/
   later failed with "Permission denied" - both changes fix that.
 - Tests: 5 unit tests of saving (PNG round trip, JPG, missing directory,
   bad extension, directory as target), 3 API tests.
+
+3.4 Video playback  [minimum]
+-----------------------------
+- Open a video file by path (e.g. data/samples/ruch_testowy.avi).
+- Play / Pause, a slider to choose any frame, frame counter with fps.
+- At the last frame playback stops and the button changes to "Replay",
+  which starts again from frame 0.
+- "Use frame as input" copies the shown frame into the Input panel, so it can
+  be processed, reset and saved like a loaded image.
+- Source handling (app/sources/video_source.py, no web code):
+  * The file must exist and cv2.VideoCapture.isOpened() must be true; a file
+    that opens but reports 0 frames is also rejected (e.g. a text file
+    renamed to .avi). Each case has its own message.
+  * read_frame(index) checks the range 0..frame_count-1. During normal
+    playback frames are requested in order, so the decoder just reads the
+    next frame; seeking (CAP_PROP_POS_FRAMES) is used only on a jump
+    (slider, replay). For MJPEG every frame is a key frame, so seeking is
+    exact.
+  * release() and use as a context manager ("with VideoSource(...)") free
+    the file handle.
+- Timing: the frontend asks for the next frame every 1/fps seconds
+  (66.7 ms at 15 fps), minus the time the request took. A frame request takes
+  about 4 ms locally (640x360, PNG), so the original speed is kept. The next
+  request starts only after the previous one finished, so requests never
+  pile up when the backend is slower.
+- Changing the source without restart: app/sources/manager.py keeps exactly
+  one active video/camera source. Opening another video or loading a still
+  image releases the previous source; the active source is also released
+  when the application shuts down (FastAPI lifespan).
+- Errors: missing / not-a-video file -> 404, frame out of range -> 400
+  ("Frame 500 is out of range (video has frames 0-194)."), no open video
+  -> 404, read failure -> 503.
+- Tests: synthetic MJPEG video generated in the test (10 frames, frame i has
+  gray level 20*i, so each frame is recognizable after lossy compression,
+  tolerance 3 levels); the sample video is checked against its description
+  (195 frames, 15 fps, 640x360). 9 source tests, 4 source-manager tests,
+  7 API tests.
