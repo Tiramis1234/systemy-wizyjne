@@ -1,0 +1,1 @@
+Nagranie syntetyczne MJPEG AVI, 640x360, 15 klatek/s, 195 klatek. Kamera nieruchoma. Pierwsze 30 klatek to pusta scena. Następnie trzy oddzielne kolorowe elementy przechodzą z lewej na prawą stronę. Zaproponuj pionową linię zliczania wewnątrz kadru. Dane służą sprawdzeniu programu, nie ocenie rzeczywistej linii przemysłowej. Źródło: dane syntetyczne przygotowane dla tej paczki.

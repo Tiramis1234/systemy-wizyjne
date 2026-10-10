@@ -1,0 +1,7 @@
+# Optional override that passes the host camera to the backend.
+# Kept separate so that `docker compose up` also works on machines without a camera.
+# Usage: docker compose -f docker-compose.yml -f compose.camera.yaml up --build
+services:
+  backend:
+    devices:
+      - /dev/video0:/dev/video0

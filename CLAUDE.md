@@ -120,4 +120,4 @@ Each stage: minimum = 3, maximum = 5. The TXT report and ZIP are part of the min
 - Everything in English: code, comments, docs, commits.
 - Python with type hints; `ruff` for lint and formatting.
 - Default parameter values live in one place, each with a short comment explaining where it comes from.
-- OpenCV uses BGR — convert to RGB only at the boundary with the frontend.
+- OpenCV uses BGR. Images reach the frontend as PNG/JPG encoded with `cv2.imencode`, which expects BGR, so encoding is the BGR→RGB boundary — no manual channel swap in `core/`.
