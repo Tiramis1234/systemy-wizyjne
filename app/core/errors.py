@@ -19,3 +19,7 @@ class ImageDecodeError(VisionError):
 
 class ImageEncodeError(VisionError):
     """The image cannot be encoded to the requested format."""
+
+
+class ImageSaveError(VisionError):
+    """The result could not be written (bad directory, permissions, format)."""

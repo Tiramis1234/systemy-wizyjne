@@ -66,6 +66,13 @@ function resetResult() {
   })
 }
 
+function saveResult(path) {
+  run(async () => {
+    const saved = await api.saveResult(path)
+    showInfo(`Saved result to ${saved.path}`)
+  })
+}
+
 onMounted(() => run(async () => (samples.value = await api.listSamples())))
 </script>
 
@@ -79,7 +86,12 @@ onMounted(() => run(async () => (samples.value = await api.listSamples())))
     </section>
 
     <section class="panel">
-      <ResultControls :disabled="!inputInfo" @apply="applyOperation" @reset="resetResult" />
+      <ResultControls
+        :disabled="!inputInfo"
+        @apply="applyOperation"
+        @reset="resetResult"
+        @save="saveResult"
+      />
     </section>
 
     <div class="viewers">

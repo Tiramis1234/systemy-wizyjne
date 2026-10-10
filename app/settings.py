@@ -8,3 +8,6 @@ from pathlib import Path
 
 # Starter data from the course package (images and videos for demos and tests).
 SAMPLES_DIR = Path("data/samples")
+
+# Default directory for saved results; created at startup.
+OUTPUT_DIR = Path("output")

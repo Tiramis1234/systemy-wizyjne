@@ -61,3 +61,11 @@ export function applyOperation(operation) {
 export function resetResult() {
   return postJson('/api/workspace/reset', {})
 }
+
+export function saveResult(path) {
+  return postJson('/api/workspace/save', { path })
+}
+
+export function resultDownloadUrl(format) {
+  return `/api/workspace/result/download?format=${format}`
+}

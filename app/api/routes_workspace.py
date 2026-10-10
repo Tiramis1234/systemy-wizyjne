@@ -1,14 +1,15 @@
 """Input and result images: serving, applying an operation, reset; sample files."""
 
-from typing import Annotated
+from pathlib import Path
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Response
 
 from app import settings
 from app.api.dependencies import get_workspace
-from app.api.schemas import ApplyRequest
+from app.api.schemas import ApplyRequest, PathRequest, SavedResponse
 from app.core.image_info import ImageInfo, describe_image
-from app.core.image_io import encode_image
+from app.core.image_io import encode_image, save_image
 from app.workspace import Workspace
 
 router = APIRouter(prefix="/api", tags=["workspace"])
@@ -54,6 +55,26 @@ def apply_operation(request: ApplyRequest, workspace: WorkspaceDep) -> ImageInfo
 def reset_result(workspace: WorkspaceDep) -> ImageInfo:
     workspace.reset()
     return describe_image(workspace.require_result())
+
+
+@router.post("/workspace/save")
+def save_result(request: PathRequest, workspace: WorkspaceDep) -> SavedResponse:
+    """Save the result on the server; PNG or JPG is chosen by the extension."""
+    path = Path(request.path)
+    save_image(workspace.require_result(), path)
+    return SavedResponse(path=str(path))
+
+
+@router.get("/workspace/result/download")
+def download_result(workspace: WorkspaceDep, format: Literal["png", "jpg"] = "png") -> Response:
+    """Send the result to the browser as a file to save."""
+    data = encode_image(workspace.require_result(), f".{format}")
+    media_type = "image/png" if format == "png" else "image/jpeg"
+    return Response(
+        content=data,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="result.{format}"'},
+    )
 
 
 @router.get("/samples")

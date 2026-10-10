@@ -7,13 +7,20 @@ interface informative instead of failing silently.
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.core.errors import ImageDecodeError, ImageEncodeError, ImageLoadError, VisionError
+from app.core.errors import (
+    ImageDecodeError,
+    ImageEncodeError,
+    ImageLoadError,
+    ImageSaveError,
+    VisionError,
+)
 
 # 404: the thing the user pointed to is not there; 400: it is there but invalid.
 STATUS_CODES: dict[type[Exception], int] = {
     ImageLoadError: 404,
     ImageDecodeError: 400,
     ImageEncodeError: 400,
+    ImageSaveError: 400,
 }
 
 

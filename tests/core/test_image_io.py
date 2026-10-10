@@ -4,8 +4,8 @@ import cv2
 import numpy as np
 import pytest
 
-from app.core.errors import ImageDecodeError, ImageLoadError
-from app.core.image_io import decode_image, encode_image, load_image
+from app.core.errors import ImageDecodeError, ImageLoadError, ImageSaveError
+from app.core.image_io import decode_image, encode_image, load_image, save_image
 
 
 def make_color_image() -> np.ndarray:
@@ -88,3 +88,38 @@ def test_sample_image_red_square_stays_red(sample_image_path: Path) -> None:
     assert red > 150
     assert blue < 100
     assert green < 100
+
+
+def test_save_png_then_load_gives_same_pixels(tmp_path: Path) -> None:
+    path = tmp_path / "result.png"
+    original = make_color_image()
+
+    save_image(original, path)
+
+    np.testing.assert_array_equal(load_image(path), original)
+
+
+def test_save_jpg_creates_readable_file(tmp_path: Path) -> None:
+    path = tmp_path / "result.jpg"
+
+    save_image(make_color_image(), path)
+
+    assert load_image(path).shape == (4, 6, 3)
+
+
+def test_save_to_missing_directory_raises_save_error(tmp_path: Path) -> None:
+    with pytest.raises(ImageSaveError, match="Directory does not exist"):
+        save_image(make_color_image(), tmp_path / "missing_dir" / "result.png")
+
+
+def test_save_with_unsupported_extension_raises_save_error(tmp_path: Path) -> None:
+    with pytest.raises(ImageSaveError, match="Unsupported"):
+        save_image(make_color_image(), tmp_path / "result.gif")
+
+
+def test_save_onto_a_directory_raises_save_error(tmp_path: Path) -> None:
+    target = tmp_path / "folder.png"
+    target.mkdir()
+
+    with pytest.raises(ImageSaveError):
+        save_image(make_color_image(), target)

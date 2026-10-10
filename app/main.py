@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 
+from app import settings
 from app.api import routes_image, routes_workspace
 from app.api.errors import register_error_handlers
 from app.workspace import Workspace
@@ -10,6 +11,7 @@ from app.workspace import Workspace
 def create_app() -> FastAPI:
     app = FastAPI(title="Machine Vision Systems")
     app.state.workspace = Workspace()
+    settings.OUTPUT_DIR.mkdir(exist_ok=True)
 
     register_error_handlers(app)
     app.include_router(routes_image.router)

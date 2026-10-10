@@ -11,3 +11,7 @@ class PathRequest(BaseModel):
 
 class ApplyRequest(BaseModel):
     operation: Operation
+
+
+class SavedResponse(BaseModel):
+    path: str

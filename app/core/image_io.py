@@ -10,10 +10,14 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from app.core.errors import ImageDecodeError, ImageEncodeError, ImageLoadError
+from app.core.errors import ImageDecodeError, ImageEncodeError, ImageLoadError, ImageSaveError
 
 # Formats required by the P01 brief. ".jpeg" is the same format as ".jpg".
 SUPPORTED_EXTENSIONS = (".png", ".jpg", ".jpeg")
+
+# JPEG quality 0-100. 95 is OpenCV's own default: visually lossless for
+# inspection images while still much smaller than PNG.
+JPEG_QUALITY = 95
 
 
 def load_image(path: Path) -> np.ndarray:
@@ -53,7 +57,26 @@ def encode_image(image: np.ndarray, extension: str = ".png") -> bytes:
     cv2.imencode expects BGR input and writes a standard RGB file, so this is the
     point where OpenCV's BGR order is converted for the browser.
     """
-    success, buffer = cv2.imencode(extension, image)
+    params = [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY] if extension in (".jpg", ".jpeg") else []
+    success, buffer = cv2.imencode(extension, image, params)
     if not success:
         raise ImageEncodeError(f"Could not encode the image as {extension}.")
     return buffer.tobytes()
+
+
+def save_image(image: np.ndarray, path: Path) -> None:
+    """Save an image as PNG/JPG; the format is chosen by the file extension."""
+    extension = path.suffix.lower()
+    if extension not in SUPPORTED_EXTENSIONS:
+        raise ImageSaveError(
+            f"Unsupported file type '{extension}'. Supported: {', '.join(SUPPORTED_EXTENSIONS)}"
+        )
+    if not path.parent.is_dir():
+        raise ImageSaveError(f"Directory does not exist: {path.parent}")
+    try:
+        data = encode_image(image, extension)
+        # Writing bytes ourselves instead of cv2.imwrite: imwrite only returns
+        # False, while OSError says why (permissions, target is a directory, ...).
+        path.write_bytes(data)
+    except (ImageEncodeError, OSError) as error:
+        raise ImageSaveError(f"Could not save {path}: {error}") from error
