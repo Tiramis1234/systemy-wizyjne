@@ -81,3 +81,22 @@ Starter data from the course package was moved to data/samples/
   * corrupted/empty file  -> 400 "The file is not a valid image or is corrupted."
 - Tests: 9 unit tests of loading/decoding/encoding on synthetic images and the
   sample image, 3 tests of image info, 7 API tests (TestClient).
+
+3.2 Input and result panels, reset  [minimum; grayscale operation = extra]
+--------------------------------------------------------------------------
+- Two panels side by side: Input and Result, each with its own image info.
+- A new input (file, video frame, camera frame) makes the result a copy of it.
+- Operation selector: "none" (copy of input) and "grayscale". P01 requires no
+  processing; grayscale is one demonstration operation so that the result
+  panel, reset and saving have something visible to work on.
+- Grayscale: cv2.cvtColor BGR2GRAY (BGRA2GRAY for images with alpha), i.e.
+  Y = 0.299 R + 0.587 G + 0.114 B (ITU-R BT.601). These weights match how
+  bright the eye perceives each color; a test checks pure green -> 150 and
+  pure blue -> 29. A 1-channel input is returned unchanged.
+- The operation is always applied to the input, never to the previous result,
+  so repeated clicks do not stack up and the result is always explainable.
+- Reset: the result becomes a copy of the input again.
+- Errors: applying/resetting without an input -> 404 with message; unknown
+  operation -> 422 (validated by the Operation enum).
+- Tests: 9 operation tests (incl. "input is never modified" for every
+  operation), 4 workspace tests, 5 API tests.
