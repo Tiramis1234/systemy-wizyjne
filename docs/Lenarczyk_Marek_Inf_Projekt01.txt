@@ -161,3 +161,39 @@ Starter data from the course package was moved to data/samples/
   tolerance 3 levels); the sample video is checked against its description
   (195 frames, 15 fps, 640x360). 9 source tests, 4 source-manager tests,
   7 API tests.
+
+3.5 Camera preview, capture, changing the source  [minimum]
+-----------------------------------------------------------
+- Camera tab: camera index (default 0 = /dev/video0), Start, live preview,
+  "Capture frame as input", Stop.
+- Source handling (app/sources/camera_source.py):
+  * After cv2.VideoCapture(index) the result of isOpened() is checked; if
+    false the capture is released and the user gets "Camera <n> not found or
+    busy. Check that it is connected and not used by another program."
+  * A failed read of an opened camera (e.g. unplugged) -> 503 with message.
+  * CAP_PROP_BUFFERSIZE = 1: the driver keeps a queue of frames; the preview
+    reads slower than the camera produces, so with a longer queue the
+    preview would show frames from the past. With 1 it shows the newest one.
+  * Stop calls release(), so the device is free for other programs. The
+    device is also released when another source is chosen and when the
+    application shuts down.
+- Common base class CaptureSource (used by video and camera): owns the
+  cv2.VideoCapture, release(), "with" support, and a lock. The lock is needed
+  because FastAPI runs requests in a thread pool - without it a preview
+  request and a capture request could read the same capture at once.
+- Changing the source without restart: one SourceManager holds the active
+  source. Opening a camera, opening a video or loading an image releases the
+  previous source. Opening a camera releases the previous source first, so
+  re-opening the same camera works. A request for a frame of a source that
+  is no longer active gets "No camera is open (it was closed or another
+  source was chosen)."
+- Preview rate: 15 fps target (1/15 s between requests, minus the request
+  time). Measured locally: 640x480 frame in about 30-50 ms, so the preview
+  runs at roughly 15 fps.
+- Docker: compose.camera.yaml passes /dev/video0 and adds the host "video"
+  group (gid 39 on Fedora, configurable with VIDEO_GID), because the backend
+  runs as a normal user. Verified: with the override the camera opens; without
+  it the "not found" message is shown and the app keeps working on files.
+- Tests: missing camera with a real index 99 (no machine has 100 cameras);
+  reading, frame size, failed read and release with a fake VideoCapture
+  (monkeypatch), so tests do not need hardware. 5 source tests, 5 API tests.
