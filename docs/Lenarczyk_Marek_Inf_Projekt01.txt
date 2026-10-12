@@ -1,6 +1,6 @@
 MACHINE VISION SYSTEMS - PROJECT STAGE P01
 Author: Marek Lenarczyk
-Group: [TO FILL]
+Group: 5
 Stage: P01 - base application: image sources, preview, saving, error handling
 Branch: feature/p01-image-sources
 
@@ -228,12 +228,33 @@ Lighting test procedure (camera /dev/video0, 640x480):
   (automatic exposure left as it is - its reaction is part of what is
   observed), the time after starting the camera (frames captured after at
   least 2 s, so automatic exposure has settled).
-- Changed: only the lighting - A: room lamp off (daylight only), B: room lamp
-  on (daylight + lamp).
+- Changed: only the lighting - A: room light on, B: room light off.
 - Steps: Camera tab -> Start -> wait 2 s -> Capture frame as input ->
-  Store input as A -> switch the lamp -> wait 2 s -> Capture -> Store as B.
-- Results: [TO FILL after the test: mean, std, dark %, bright % for A and B,
-  B - A, observations, screenshot]
+  Store input as A -> switch the light off -> wait 2 s -> Capture -> Store as B.
+- Results (screenshot assets/p01_lighting_camera.png):
+
+                        A (brighter)   B (darker)
+  mean brightness           80.4          15.6
+  std (contrast)            36.9           8.7
+  min / max               20 / 234       5 / 62
+  dark pixels (<= 5)        0.0 %         0.0 %
+  bright pixels (>= 250)    0.0 %         0.0 %
+  B - A (mean)                 -64.8
+
+- Observations:
+  * Under the darker lighting the mean brightness dropped by 64.8 levels
+    (about 5x) even though automatic exposure was active - the camera could
+    not fully compensate.
+  * Contrast dropped from 36.9 to 8.7 and the used range shrank from
+    20-234 to 5-62: the histogram of B is a narrow peak at the dark end, so
+    most details of the object are lost and would be hard to inspect.
+  * No pixels are clipped in either image (0 % dark, 0 % bright), but B is
+    at the edge of underexposure (min = 5, the dark limit).
+  * Conclusion for later stages: the inspection needs stable, sufficient
+    lighting; algorithms with fixed thresholds would fail under setting B.
+- The same panel works for any input; assets/p01_lighting_video.png compares
+  two frames of the sample video (only the color of the ball differs), so
+  the mean brightness difference is close to 0 (-0.0).
 
 ==============================================================================
 4. REQUIRED MINIMUM VS. EXTRAS
@@ -352,11 +373,13 @@ Manual tests - invalid inputs (message shown, interface keeps working):
 9. SCREENSHOTS (assets/ in the ZIP)
 ==============================================================================
 
-- assets/p01_image_info.png - obraz_testowy.png loaded: Input and Result
-  panels with resolution, channels and data type; result after Grayscale.
-- assets/p01_video.png - ruch_testowy.avi in the video player: frame
-  counter, slider, play / pause.
-- assets/p01_error.png - example error message (corrupted file or missing
-  camera) shown in the interface while the application keeps working.
-- assets/p01_lighting.png - lighting comparison A / B: images, histograms,
-  statistics and the difference of mean brightness.
+- assets/p01_video_grayscale.png - ruch_testowy.avi in the video player
+  (frame 49 / 194, 15 fps, slider, Play); the frame used as input
+  (640 x 360 px, 3 channels, uint8) and the Grayscale result
+  (640 x 360 px, 1 channel, uint8) side by side.
+- assets/p01_error.png - load from an empty path: the message
+  "File does not exist: ." is shown and the interface keeps working.
+- assets/p01_lighting_video.png - lighting comparison panel on two video
+  frames: images, histograms and statistics; B - A = -0.0.
+- assets/p01_lighting_camera.png - lighting comparison with the camera:
+  A (brighter) mean 80.4, B (darker) mean 15.6, B - A = -64.8.
