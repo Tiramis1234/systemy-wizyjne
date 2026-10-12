@@ -94,6 +94,8 @@ Before merging a stage, Claude runs the check:
 - If gaps show up, Claude explains the fragment and then checks it again.
 - Merge only after the user explicitly confirms they understand everything **and** the check is passed.
 - The practice change is not committed unless the user decides to keep it.
+- Ask **one question at a time**.
+- Record every question, the user's answer, the evaluation and the explanation in `docs/learning/pXX.md` (one file per stage, Markdown). `docs/learning/` is git-ignored — personal notes, not part of the submission.
 
 ## Stage deliverables
 

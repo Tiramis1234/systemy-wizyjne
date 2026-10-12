@@ -225,3 +225,6 @@ output/*
 
 # Stage ZIPs
 Lenarczyk_Marek_Inf_Projekt*.zip
+
+# Personal learning notes from understanding checks (not part of the submission)
+docs/learning/
