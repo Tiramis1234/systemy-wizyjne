@@ -1,5 +1,6 @@
 MACHINE VISION SYSTEMS - PROJECT STAGE P01
 Author: Marek Lenarczyk
+Group: [TO FILL]
 Stage: P01 - base application: image sources, preview, saving, error handling
 Branch: feature/p01-image-sources
 
@@ -272,18 +273,37 @@ Automated tests (uv run pytest): 87 passed.
   missing camera with a real non-existent index.
 - api: every endpoint through FastAPI TestClient, including all error paths.
 
-Manual checks:
-- obraz_testowy.png: correct colors, 640 x 420 px, 3 channels, uint8.
-- wrong path, corrupted file (text renamed to .png): messages shown,
-  interface keeps working.
-- ruch_testowy.avi: play / pause / slider / replay at 15 fps; frame request
-  about 4 ms.
-- camera: preview with natural colors, capture, stop; camera index 5 ->
-  "Camera 5 not found or busy ...".
-- save to a missing directory -> "Directory does not exist: ...".
-- switching camera -> video: the camera is released ("No camera is open").
-- Docker without camera: "Camera 0 not found ..." and files work; Docker with
-  compose.camera.yaml: camera opens.
+Manual tests - valid inputs (expected result = actual result):
+- data/samples/obraz_testowy.png -> image shown with correct colors,
+  640 x 420 px, 3 channels, uint8.
+- PNG/JPG upload from the browser -> same image and info as by path.
+- Grayscale -> result 1 channel; Reset -> result equals the input again.
+- Save output/result.png and output/result.jpg -> files written, PNG reloads
+  identical to the result.
+- data/samples/ruch_testowy.avi -> play / pause / slider / replay at 15 fps,
+  frame request about 4 ms; "Use frame as input" copies the frame.
+- Camera 0 -> live preview with natural colors, capture, stop.
+- Source change: camera -> video -> image without restart; the previous
+  source is released.
+- Docker with compose.camera.yaml -> camera opens.
+
+Manual tests - invalid inputs (message shown, interface keeps working):
+- wrong path data/missing.png      -> 404 "File does not exist: ..."
+- file with .bmp extension         -> 404 "Unsupported file type '.bmp' ..."
+- text file renamed to .png        -> 400 "The file is not a valid image or
+                                      is corrupted."
+- text file renamed to .avi        -> 404 "Not a video or the video has no
+                                      frames: ..." (or "Cannot open as
+                                      video: ...")
+- frame 500 of a 195-frame video   -> 400 "Frame 500 is out of range (video
+                                      has frames 0-194)."
+- camera index 5 (no such device)  -> 404 "Camera 5 not found or busy ..."
+- frame of a closed camera         -> 404 "No camera is open ..."
+- save to a missing directory      -> 400 "Directory does not exist: ..."
+- save with extension .bmp         -> 400 "Unsupported file type ..."
+- apply / reset without an input   -> 404 with message
+- Docker without camera            -> "Camera 0 not found ..." and files
+                                      still work.
 
 ==============================================================================
 6. PROBLEMS
@@ -327,3 +347,16 @@ Manual checks:
 - Choose the inspection subject for the project charter.
 - Processing video frames live (needed later, e.g. for the counting line
   suggested in data/samples/opis_danych.txt).
+
+==============================================================================
+9. SCREENSHOTS (assets/ in the ZIP)
+==============================================================================
+
+- assets/p01_image_info.png - obraz_testowy.png loaded: Input and Result
+  panels with resolution, channels and data type; result after Grayscale.
+- assets/p01_video.png - ruch_testowy.avi in the video player: frame
+  counter, slider, play / pause.
+- assets/p01_error.png - example error message (corrupted file or missing
+  camera) shown in the interface while the application keeps working.
+- assets/p01_lighting.png - lighting comparison A / B: images, histograms,
+  statistics and the difference of mean brightness.
