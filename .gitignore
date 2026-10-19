@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Saved processing results (the empty directory is kept so Docker does not create it as root)
+output/*
+!output/.gitkeep
+
+# Stage ZIPs
+Lenarczyk_Marek_Inf_Projekt*.zip
+
+# Personal learning notes from understanding checks (not part of the submission)
+docs/learning/

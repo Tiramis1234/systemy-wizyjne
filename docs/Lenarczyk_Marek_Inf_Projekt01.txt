@@ -1,0 +1,385 @@
+MACHINE VISION SYSTEMS - PROJECT STAGE P01
+Author: Marek Lenarczyk
+Group: 5
+Stage: P01 - base application: image sources, preview, saving, error handling
+Branch: feature/p01-image-sources
+
+==============================================================================
+1. STAGE GOAL
+==============================================================================
+
+Build the base application that all later stages extend. The interface, the
+handling of image sources and the image processing are kept in separate
+layers. The application loads JPG/PNG images, plays video files, shows a live
+camera preview, displays the input and the result side by side, saves the
+result and reports errors without freezing the interface.
+
+==============================================================================
+2. ARCHITECTURE AND TECHNOLOGY
+==============================================================================
+
+- Backend: Python 3.13 + FastAPI + OpenCV (opencv-python-headless 5.0).
+  Python 3.13 is pinned instead of the system 3.14 because OpenCV and NumPy
+  wheels for 3.13 are well established.
+- Frontend: Vue 3 + Vite. It only calls the HTTP API; no image processing.
+- Run: locally (uv run fastapi dev app/main.py, npm run dev) or with
+  Docker Compose (backend + frontend services).
+- The camera is passed to Docker only through an optional override file
+  (compose.camera.yaml), so the default "docker compose up" also works on a
+  machine without a camera.
+
+Layers (required separation of interface, sources and processing):
+
+  app/core/     processing: pure functions working on numpy arrays,
+                no web or source code
+  app/sources/  image sources: image file, video file, camera
+                (opening, checking, releasing)
+  app/api/      HTTP layer: thin FastAPI routers, no processing logic
+  frontend/     user interface
+
+Starter data from the course package was moved to data/samples/
+(obraz_testowy.png 640x420 RGB, ruch_testowy.avi 640x360 MJPEG, 15 fps,
+195 frames).
+
+==============================================================================
+3. IMPLEMENTED FEATURES
+==============================================================================
+
+3.0 Project scaffold
+--------------------
+- uv project with FastAPI and OpenCV, pytest and ruff configured.
+- Health endpoint GET /api/health (tested with TestClient).
+- Vue + Vite frontend; the dev server proxies /api to the backend, so the
+  frontend never needs to know the backend address.
+- Dockerfiles for backend and frontend, docker-compose.yml, camera override.
+- Verified: "docker compose up --build" starts both services and
+  GET /api/health through the frontend proxy returns {"status": "ok"}.
+
+3.1 Loading JPG/PNG images and image info  [minimum]
+----------------------------------------------------
+- An image can be loaded by a path on the server (with suggestions from
+  data/samples/) or uploaded from the browser.
+- Shown: the image, resolution (width x height), number of channels and data
+  type (e.g. 640 x 420 px, 3 channels, uint8 for obraz_testowy.png).
+- Methods and parameters:
+  * Files are read with cv2.imdecode(..., IMREAD_UNCHANGED). UNCHANGED keeps
+    the original number of channels (grayscale = 1, RGBA = 4) and bit depth
+    (uint8/uint16), so the info panel shows what really is in the file instead
+    of a forced 3-channel 8-bit conversion.
+  * Bytes are read first and decoded second instead of using cv2.imread,
+    because imread returns None for every problem; this way a missing file
+    and a corrupted file produce two different, precise messages.
+  * Accepted extensions: .png, .jpg, .jpeg (required formats; .jpeg is the
+    same format as .jpg).
+- Colors: images stay in OpenCV's BGR order internally. The preview is sent
+  to the browser as PNG made by cv2.imencode, which expects BGR and writes a
+  standard RGB file - so there is no manual channel swap that could be
+  forgotten or done twice. A test checks that the red square of
+  obraz_testowy.png is still red (R > 150, B < 100) after loading.
+- Errors (HTTP status + message shown in the interface):
+  * wrong path            -> 404 "File does not exist: <path>"
+  * unsupported extension -> 404 "Unsupported file type ..."
+  * corrupted/empty file  -> 400 "The file is not a valid image or is corrupted."
+- Tests: 9 unit tests of loading/decoding/encoding on synthetic images and the
+  sample image, 3 tests of image info, 7 API tests (TestClient).
+
+3.2 Input and result panels, reset  [minimum; grayscale operation = extra]
+--------------------------------------------------------------------------
+- Two panels side by side: Input and Result, each with its own image info.
+- A new input (file, video frame, camera frame) makes the result a copy of it.
+- Operation selector: "none" (copy of input) and "grayscale". P01 requires no
+  processing; grayscale is one demonstration operation so that the result
+  panel, reset and saving have something visible to work on.
+- Grayscale: cv2.cvtColor BGR2GRAY (BGRA2GRAY for images with alpha), i.e.
+  Y = 0.299 R + 0.587 G + 0.114 B (ITU-R BT.601). These weights match how
+  bright the eye perceives each color; a test checks pure green -> 150 and
+  pure blue -> 29. A 1-channel input is returned unchanged.
+- The operation is always applied to the input, never to the previous result,
+  so repeated clicks do not stack up and the result is always explainable.
+- Reset: the result becomes a copy of the input again.
+- Errors: applying/resetting without an input -> 404 with message; unknown
+  operation -> 422 (validated by the Operation enum).
+- Tests: 9 operation tests (incl. "input is never modified" for every
+  operation), 4 workspace tests, 5 API tests.
+
+3.3 Saving the result as PNG/JPG  [minimum; browser download = extra]
+---------------------------------------------------------------------
+- "Save on server": the result is written to a path given by the user
+  (default output/result.png). The format follows the extension:
+  .png (lossless) or .jpg/.jpeg.
+- "Download PNG / JPG": the result is sent to the browser as a file.
+- Parameters:
+  * JPEG quality = 95 (cv2.IMWRITE_JPEG_QUALITY). This is OpenCV's own
+    default: artifacts are not visible on inspection images while the file is
+    much smaller than PNG. PNG uses OpenCV defaults (lossless).
+- The image is encoded with cv2.imencode and written with Python file I/O
+  instead of cv2.imwrite, because imwrite only returns False on failure,
+  while an OSError says why (missing permissions, target is a directory).
+- Errors (400 + message):
+  * directory does not exist -> "Directory does not exist: <dir>"
+  * unsupported extension    -> "Unsupported file type ..."
+  * permissions / target is a directory -> "Could not save <path>: <reason>"
+- Docker: the backend container runs as the host user (user: 1000:1000 by
+  default), and output/ exists in the repository. Problem found during
+  testing: Docker created a missing bind-mount directory as root, so saving
+  later failed with "Permission denied" - both changes fix that.
+- Tests: 5 unit tests of saving (PNG round trip, JPG, missing directory,
+  bad extension, directory as target), 3 API tests.
+
+3.4 Video playback  [minimum]
+-----------------------------
+- Open a video file by path (e.g. data/samples/ruch_testowy.avi).
+- Play / Pause, a slider to choose any frame, frame counter with fps.
+- At the last frame playback stops and the button changes to "Replay",
+  which starts again from frame 0.
+- "Use frame as input" copies the shown frame into the Input panel, so it can
+  be processed, reset and saved like a loaded image.
+- Source handling (app/sources/video_source.py, no web code):
+  * The file must exist and cv2.VideoCapture.isOpened() must be true; a file
+    that opens but reports 0 frames is also rejected (e.g. a text file
+    renamed to .avi). Each case has its own message.
+  * read_frame(index) checks the range 0..frame_count-1. During normal
+    playback frames are requested in order, so the decoder just reads the
+    next frame; seeking (CAP_PROP_POS_FRAMES) is used only on a jump
+    (slider, replay). For MJPEG every frame is a key frame, so seeking is
+    exact.
+  * release() and use as a context manager ("with VideoSource(...)") free
+    the file handle.
+- Timing: the frontend asks for the next frame every 1/fps seconds
+  (66.7 ms at 15 fps), minus the time the request took. A frame request takes
+  about 4 ms locally (640x360, PNG), so the original speed is kept. The next
+  request starts only after the previous one finished, so requests never
+  pile up when the backend is slower.
+- Changing the source without restart: app/sources/manager.py keeps exactly
+  one active video/camera source. Opening another video or loading a still
+  image releases the previous source; the active source is also released
+  when the application shuts down (FastAPI lifespan).
+- Errors: missing / not-a-video file -> 404, frame out of range -> 400
+  ("Frame 500 is out of range (video has frames 0-194)."), no open video
+  -> 404, read failure -> 503.
+- Tests: synthetic MJPEG video generated in the test (10 frames, frame i has
+  gray level 20*i, so each frame is recognizable after lossy compression,
+  tolerance 3 levels); the sample video is checked against its description
+  (195 frames, 15 fps, 640x360). 9 source tests, 4 source-manager tests,
+  7 API tests.
+
+3.5 Camera preview, capture, changing the source  [minimum]
+-----------------------------------------------------------
+- Camera tab: camera index (default 0 = /dev/video0), Start, live preview,
+  "Capture frame as input", Stop.
+- Source handling (app/sources/camera_source.py):
+  * After cv2.VideoCapture(index) the result of isOpened() is checked; if
+    false the capture is released and the user gets "Camera <n> not found or
+    busy. Check that it is connected and not used by another program."
+  * A failed read of an opened camera (e.g. unplugged) -> 503 with message.
+  * CAP_PROP_BUFFERSIZE = 1: the driver keeps a queue of frames; the preview
+    reads slower than the camera produces, so with a longer queue the
+    preview would show frames from the past. With 1 it shows the newest one.
+  * Stop calls release(), so the device is free for other programs. The
+    device is also released when another source is chosen and when the
+    application shuts down.
+- Common base class CaptureSource (used by video and camera): owns the
+  cv2.VideoCapture, release(), "with" support, and a lock. The lock is needed
+  because FastAPI runs requests in a thread pool - without it a preview
+  request and a capture request could read the same capture at once.
+- Changing the source without restart: one SourceManager holds the active
+  source. Opening a camera, opening a video or loading an image releases the
+  previous source. Opening a camera releases the previous source first, so
+  re-opening the same camera works. A request for a frame of a source that
+  is no longer active gets "No camera is open (it was closed or another
+  source was chosen)."
+- Preview rate: 15 fps target (1/15 s between requests, minus the request
+  time). Measured locally: 640x480 frame in about 30-50 ms, so the preview
+  runs at roughly 15 fps.
+- Docker: compose.camera.yaml passes /dev/video0 and adds the host "video"
+  group (gid 39 on Fedora, configurable with VIDEO_GID), because the backend
+  runs as a normal user. Verified: with the override the camera opens; without
+  it the "not found" message is shown and the app keeps working on files.
+- Tests: missing camera with a real index 99 (no machine has 100 cameras);
+  reading, frame size, failed read and release with a fake VideoCapture
+  (monkeypatch), so tests do not need hardware. 5 source tests, 5 API tests.
+
+3.6 Lighting comparison  [minimum: the test itself; panel = extra]
+------------------------------------------------------------------
+- Panel "Lighting comparison": "Store input as A" / "Store input as B" keep a
+  copy of the current input (from any source: camera capture, video frame or
+  file). For each one the backend computes statistics on the luminance
+  (grayscale) image, and the panel shows the image, a histogram, the values
+  and the difference of mean brightness B - A.
+- Statistics (app/core/image_stats.py) and why:
+  * mean            - overall brightness: the main effect of a lighting change
+  * std             - global contrast (spread of gray levels)
+  * min / max       - used range of gray levels
+  * dark fraction   - share of pixels <= 5   (underexposed, detail lost)
+  * bright fraction - share of pixels >= 250 (overexposed, detail lost)
+    The limits 5 / 250 (about 2% of the 0-255 range) count near-black and
+    near-white pixels as clipped while tolerating sensor noise around 0/255.
+  * histogram: 32 bins of 8 gray levels - enough to see the shape (dark,
+    bright, clipped) while readable as a small chart.
+- Only 8-bit images are supported (camera frames always are); a 16-bit input
+  gets a clear message.
+- Tests: 5 unit tests with known results (uniform image, half black / half
+  white -> mean 127.5, std 127.5, 50% dark, 50% bright; histogram counts),
+  5 API tests.
+
+Lighting test procedure (camera /dev/video0, 640x480):
+- Kept constant: camera position and angle (camera not moved between shots),
+  the scene and the objects in it, distance, resolution, camera settings
+  (automatic exposure left as it is - its reaction is part of what is
+  observed), the time after starting the camera (frames captured after at
+  least 2 s, so automatic exposure has settled).
+- Changed: only the lighting - A: room light on, B: room light off.
+- Steps: Camera tab -> Start -> wait 2 s -> Capture frame as input ->
+  Store input as A -> switch the light off -> wait 2 s -> Capture -> Store as B.
+- Results (screenshot assets/p01_lighting_camera.png):
+
+                        A (brighter)   B (darker)
+  mean brightness           80.4          15.6
+  std (contrast)            36.9           8.7
+  min / max               20 / 234       5 / 62
+  dark pixels (<= 5)        0.0 %         0.0 %
+  bright pixels (>= 250)    0.0 %         0.0 %
+  B - A (mean)                 -64.8
+
+- Observations:
+  * Under the darker lighting the mean brightness dropped by 64.8 levels
+    (about 5x) even though automatic exposure was active - the camera could
+    not fully compensate.
+  * Contrast dropped from 36.9 to 8.7 and the used range shrank from
+    20-234 to 5-62: the histogram of B is a narrow peak at the dark end, so
+    most details of the object are lost and would be hard to inspect.
+  * No pixels are clipped in either image (0 % dark, 0 % bright), but B is
+    at the edge of underexposure (min = 5, the dark limit).
+  * Conclusion for later stages: the inspection needs stable, sufficient
+    lighting; algorithms with fixed thresholds would fail under setting B.
+- The same panel works for any input; assets/p01_lighting_video.png compares
+  two frames of the sample video (only the color of the ball differs), so
+  the mean brightness difference is close to 0 (-0.0).
+
+==============================================================================
+4. REQUIRED MINIMUM VS. EXTRAS
+==============================================================================
+
+Required minimum (P01 brief):
+- web interface; interface / sources / processing in separate layers
+- loading JPG and PNG; image, resolution, channels, data type shown
+- camera preview and frame capture; opening checked, device released
+- video play / pause, frame selection, replay after the end
+- input and result shown; reset; saving PNG/JPG; source change without restart
+- messages for: wrong path, corrupted image, missing camera, failed save;
+  the interface stays responsive
+- comparison of two lighting settings with the camera (procedure in 3.6)
+- report (this file) and source ZIP
+
+Extras (beyond the brief):
+- grayscale operation (gives the result panel a visible effect)
+- lighting comparison panel with brightness statistics and histograms
+- image upload from the browser in addition to server paths
+- result download in the browser in addition to saving on the server
+- Docker Compose with optional camera passthrough, non-root backend
+- automated tests: 87 (pytest), lint with ruff
+
+==============================================================================
+5. TEST CONDITIONS AND RESULTS
+==============================================================================
+
+Environment: Fedora Linux, Python 3.13.15, OpenCV 5.0.0, FastAPI 0.143,
+Vue 3.5, Vite 8, built-in laptop camera /dev/video0 (640x480).
+
+Automated tests (uv run pytest): 87 passed.
+- core: synthetic images (np.zeros / np.full + known values) with known
+  expected results, plus the course sample image (red square stays red).
+- sources: synthetic MJPEG video generated during the test; the sample video
+  checked against its description; camera with a fake VideoCapture, and a
+  missing camera with a real non-existent index.
+- api: every endpoint through FastAPI TestClient, including all error paths.
+
+Manual tests - valid inputs (expected result = actual result):
+- data/samples/obraz_testowy.png -> image shown with correct colors,
+  640 x 420 px, 3 channels, uint8.
+- PNG/JPG upload from the browser -> same image and info as by path.
+- Grayscale -> result 1 channel; Reset -> result equals the input again.
+- Save output/result.png and output/result.jpg -> files written, PNG reloads
+  identical to the result.
+- data/samples/ruch_testowy.avi -> play / pause / slider / replay at 15 fps,
+  frame request about 4 ms; "Use frame as input" copies the frame.
+- Camera 0 -> live preview with natural colors, capture, stop.
+- Source change: camera -> video -> image without restart; the previous
+  source is released.
+- Docker with compose.camera.yaml -> camera opens.
+
+Manual tests - invalid inputs (message shown, interface keeps working):
+- wrong path data/missing.png      -> 404 "File does not exist: ..."
+- file with .bmp extension         -> 404 "Unsupported file type '.bmp' ..."
+- text file renamed to .png        -> 400 "The file is not a valid image or
+                                      is corrupted."
+- text file renamed to .avi        -> 404 "Not a video or the video has no
+                                      frames: ..." (or "Cannot open as
+                                      video: ...")
+- frame 500 of a 195-frame video   -> 400 "Frame 500 is out of range (video
+                                      has frames 0-194)."
+- camera index 5 (no such device)  -> 404 "Camera 5 not found or busy ..."
+- frame of a closed camera         -> 404 "No camera is open ..."
+- save to a missing directory      -> 400 "Directory does not exist: ..."
+- save with extension .bmp         -> 400 "Unsupported file type ..."
+- apply / reset without an input   -> 404 with message
+- Docker without camera            -> "Camera 0 not found ..." and files
+                                      still work.
+
+==============================================================================
+6. PROBLEMS
+==============================================================================
+
+- Docker created the missing output/ bind-mount directory as root, so saving
+  results later failed with "Permission denied". Fixed by keeping output/ in
+  the repository and running the backend container as the host user.
+- As a non-root user the container could not open the camera; fixed by
+  adding the host "video" group (group_add) in compose.camera.yaml.
+- cv2.imread / cv2.imwrite do not say why they failed (None / False), so
+  reading and writing bytes is done with Python file I/O and OpenCV only
+  decodes / encodes; this gives precise error messages.
+- Patching cv2.VideoCapture globally in camera tests would also replace it for
+  video sources; the camera module imports VideoCapture by name so tests
+  replace only the camera's capture.
+
+==============================================================================
+7. LIMITATIONS
+==============================================================================
+
+- Single user: the application keeps one input, one result and one active
+  source in memory; two browser tabs share the same state.
+- Video and camera frames are sent as PNG one request at a time; fine for
+  640x480 at 15 fps locally, too slow for high resolutions or remote use.
+- Brightness statistics support 8-bit images only.
+- When the source is changed in one tab, the preview of the closed source
+  stops with a message instead of silently switching.
+- Saving configuration to JSON is not implemented yet: P01 has almost no
+  parameters (camera index, operation). It starts in P02 together with the
+  first processing methods.
+- Only /dev/video0 is passed to Docker; other cameras need an edit of
+  compose.camera.yaml.
+
+==============================================================================
+8. NEXT STEPS
+==============================================================================
+
+- P02: first processing methods with tunable parameters in core/, saving and
+  loading parameters as JSON.
+- Choose the inspection subject for the project charter.
+- Processing video frames live (needed later, e.g. for the counting line
+  suggested in data/samples/opis_danych.txt).
+
+==============================================================================
+9. SCREENSHOTS (assets/ in the ZIP)
+==============================================================================
+
+- assets/p01_video_grayscale.png - ruch_testowy.avi in the video player
+  (frame 49 / 194, 15 fps, slider, Play); the frame used as input
+  (640 x 360 px, 3 channels, uint8) and the Grayscale result
+  (640 x 360 px, 1 channel, uint8) side by side.
+- assets/p01_error.png - load from an empty path: the message
+  "File does not exist: ." is shown and the interface keeps working.
+- assets/p01_lighting_video.png - lighting comparison panel on two video
+  frames: images, histograms and statistics; B - A = -0.0.
+- assets/p01_lighting_camera.png - lighting comparison with the camera:
+  A (brighter) mean 80.4, B (darker) mean 15.6, B - A = -64.8.

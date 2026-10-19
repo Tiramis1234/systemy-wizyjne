@@ -1,0 +1,16 @@
+"""Application-wide defaults, kept in one place.
+
+Paths are relative to the working directory: the repository root when run with
+`uv run fastapi dev app/main.py`, and /app inside the Docker container.
+"""
+
+from pathlib import Path
+
+# Starter data from the course package (images and videos for demos and tests).
+SAMPLES_DIR = Path("data/samples")
+
+# Default directory for saved results; created at startup.
+OUTPUT_DIR = Path("output")
+
+# Default camera: index 0 is the first video device (/dev/video0 on Linux).
+CAMERA_INDEX = 0

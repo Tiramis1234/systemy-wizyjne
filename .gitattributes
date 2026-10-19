@@ -1,0 +1,3 @@
+# Files left out of the stage ZIP (git archive): Claude Code setup, not part of the application
+CLAUDE.md export-ignore
+.claude export-ignore
